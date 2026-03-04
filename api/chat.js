@@ -88,7 +88,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { messages, child, teacher } = req.body;
+    const { messages, child, teacher, systemPrompt: customPrompt } = req.body;
 
     // Validate required fields
     if (!messages || !child?.name || !child?.age || !child?.level) {
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Check API key exists
+    const finalSystemPrompt = customPrompt || buildSystemPrompt(teacher, child);
     if (!process.env.GROQ_API_KEY) {
       console.error("GROQ_API_KEY environment variable not set");
       return res.status(500).json({ error: "Server configuration error" });
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: "system", content: buildSystemPrompt(teacher, child) },
+          { role: "system", content: finalSystemPrompt },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ],
         max_tokens: 600,
