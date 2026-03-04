@@ -249,6 +249,7 @@ const JOURNEYS = [
     featured: true,
     spark: "Trees have been keeping an ENORMOUS secret from humans for thousands of years. We've been walking right over it. Literally. With our feet. It was only recently discovered. Want to know what it is?",
     sparkTitle: "The secret trees have been keeping",
+    bg: "#F0F7F0", accent: "#2D6A4F", accentPale: "#D8EFDF",
   },
   {
     id: "why",
@@ -257,6 +258,7 @@ const JOURNEYS = [
     icon: "🤔",
     spark: "Every single night, without asking your permission, your brain invents an entirely different world and traps you inside it. Scientists have been trying to figure out why for decades. They still haven't. I find this both brilliant and slightly alarming. Do you?",
     sparkTitle: "Why do we dream?",
+    bg: "#F0EFF8", accent: "#4A3F8C", accentPale: "#E2DFF5",
   },
   {
     id: "make",
@@ -265,6 +267,7 @@ const JOURNEYS = [
     icon: "🎨",
     spark: "Right. I need your help with something. There is a place at the bottom of the ocean so dark and so crushed that a submarine would be destroyed instantly. Something lives down there. We need to invent it. What does it look like?",
     sparkTitle: "Invent a deep ocean creature",
+    bg: "#EFF6FB", accent: "#1B6CA8", accentPale: "#D6EAF8",
   },
   {
     id: "rabbit",
@@ -273,6 +276,7 @@ const JOURNEYS = [
     icon: "🐇",
     spark: "The word salary comes from salt. Roman soldiers were sometimes paid in salt because it was so valuable. Which means — technically — you could be paid in salt today. This made me wonder about the strangest things humans have ever used as money. The answer is extraordinary.",
     sparkTitle: "The strangest money ever used",
+    bg: "#FBF3EC", accent: "#9C4B1A", accentPale: "#F5DFC8",
   },
   {
     id: "free",
@@ -281,6 +285,7 @@ const JOURNEYS = [
     icon: "✨",
     spark: null,
     sparkTitle: "Free exploration",
+    bg: "var(--chalk)", accent: "var(--ink)", accentPale: "var(--gold-pale)",
   },
 ];
 
@@ -598,6 +603,10 @@ function ChatView({ child, teacher, journey, messages, loading, onSend, onBack }
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
   const send = (text) => { if (!text.trim() || loading) return; onSend(text); };
 
+  const jBg     = journey?.bg          || "var(--chalk)";
+  const jAccent = journey?.accent      || "var(--ink)";
+  const jPale   = journey?.accentPale  || "var(--gold-pale)";
+
   const STARTERS = {
     world:  ["Tell me about the secret.", "How do they do it?", "Has this always been happening?", "That's remarkable. Tell me more."],
     why:    ["Tell me about the dreams.", "Do animals dream too?", "Why does my brain make stuff up?", "What do scientists think?"],
@@ -608,15 +617,30 @@ function ChatView({ child, teacher, journey, messages, loading, onSend, onBack }
   const starters = STARTERS[journey?.id || "free"];
 
   return (
-    <div className="chat-shell">
-      <div className="chat-top">
-        <div className="chat-q-av"><QuokkaSVG size="sm" anim="bounce" /></div>
+    <div className="chat-shell" style={{ background: jBg }}>
+      <div className="chat-top" style={{ background: jBg, borderBottom: `1px solid ${jAccent}22` }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: "50%",
+          background: jPale, border: `2px solid ${jAccent}55`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "'Lora',serif", fontWeight: 700, fontSize: 15, color: jAccent,
+          flexShrink: 0,
+        }}>Q</div>
         <div>
           <div className="chat-q-name">Quokka</div>
           <div className="chat-q-sub">with {child.name}</div>
         </div>
-        {journey && <div className="chat-badge">{journey.icon} {journey.sparkTitle}</div>}
-        <button className="chat-back" onClick={onBack}>← Journeys</button>
+        {journey && (
+          <div style={{
+            background: jPale, color: jAccent,
+            border: `1px solid ${jAccent}44`,
+            fontSize: 11, fontWeight: 700, padding: "3px 10px",
+            borderRadius: 2, fontFamily: "'Inter',sans-serif",
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            maxWidth: 160, letterSpacing: "0.02em",
+          }}>{journey.icon} {journey.sparkTitle}</div>
+        )}
+        <button className="chat-back" style={{ borderColor: `${jAccent}44`, color: jAccent }} onClick={onBack}>← Journeys</button>
       </div>
       <div className="chat-feed">
         <div className="chat-inner">
@@ -627,25 +651,34 @@ function ChatView({ child, teacher, journey, messages, loading, onSend, onBack }
                 {journey?.id === "free" ? "Ask me anything. I warn you, I have opinions." : "Tap to begin. Choose carefully."}
               </div>
               <div className="starter-grid">
-                {starters.map(s => <button key={s} className="starter-btn" onClick={() => send(s)}>{s}</button>)}
+                {starters.map(s => (
+                  <button key={s} className="starter-btn"
+                    style={{ borderColor: `${jAccent}33` }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = jAccent; e.currentTarget.style.background = jPale; e.currentTarget.style.color = jAccent; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = `${jAccent}33`; e.currentTarget.style.background = "white"; e.currentTarget.style.color = "var(--ink2)"; }}
+                    onClick={() => send(s)}>{s}</button>
+                ))}
               </div>
             </div>
           ) : messages.map((m, i) =>
             m.role === "user"
-              ? <div key={i} className="msg-u">{m.content}</div>
+              ? <div key={i} className="msg-u" style={{ background: jAccent }}>{m.content}</div>
               : <div key={i} className="msg-a" dangerouslySetInnerHTML={{ __html: renderMd(m.content) }} />
           )}
           {loading && <div className="typing-row"><div className="dot" /><div className="dot" /><div className="dot" /></div>}
           <div ref={endRef} />
         </div>
       </div>
-      <div className="chat-foot">
+      <div className="chat-foot" style={{ background: jBg, borderTop: `1px solid ${jAccent}22` }}>
         <div className="chat-foot-inner">
           <div className="input-row">
             <textarea className="chat-ta" rows={1} placeholder="Say something..."
+              style={{ background: "white", borderColor: `${jAccent}33` }}
+              onFocus={e => e.target.style.borderColor = jAccent}
+              onBlur={e => e.target.style.borderColor = `${jAccent}33`}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(e.target.value); e.target.value = ""; } }}
             />
-            <button className="send" disabled={loading}
+            <button className="send" disabled={loading} style={{ background: jAccent }}
               onClick={e => { const ta = e.target.closest(".chat-foot").querySelector(".chat-ta"); send(ta.value); ta.value = ""; }}>↑</button>
           </div>
         </div>
