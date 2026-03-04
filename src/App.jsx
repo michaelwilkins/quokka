@@ -281,46 +281,20 @@ const DEFAULT_TEACHER = {
   styles: ["Encouraging", "Curious", "Step-by-step"],
   rules: ["Never write homework answers", "Guide children to think", "Use simple language"],
 };
-const PROVIDERS = [
-  { id: "anthropic", name: "Anthropic", model: "Claude Sonnet", apiModel: "claude-sonnet-4-20250514", placeholder: "sk-ant-..." },
-  { id: "openai",    name: "OpenAI",    model: "GPT-4o",        apiModel: "gpt-4o",                   placeholder: "sk-..." },
-  { id: "google",    name: "Google",    model: "Gemini 1.5",    apiModel: "gemini-1.5-flash",          placeholder: "AIza..." },
-  { id: "groq",      name: "Groq",      model: "Llama 3.1",     apiModel: "llama-3.1-70b-versatile",  placeholder: "gsk_..." },
-];
 const STYLES = ["Encouraging","Curious","Step-by-step","Asks questions","Playful","Patient","Structured"];
 const RULES  = ["Never write homework answers","Guide children to think","Use simple language","Avoid mature topics","Always ask a follow-up question","Show steps for maths"];
 const LEVELS = ["Beginner","Intermediate","Advanced"];
 
-function buildPrompt(teacher, child) {
-  return `You are ${teacher.name}, a warm and dedicated teacher helping ${child.name}, who is ${child.age} years old and at a ${child.level} learning level.
-Teaching style: ${teacher.styles.join(", ")}.
-Rules you follow strictly:\n${teacher.rules.map(r=>`- ${r}`).join("\n")}
-Always adapt your language for a ${child.age}-year-old at ${child.level} level. Be warm and patient. Never complete homework. Guide the student to think. Keep responses focused and engaging.`;
-}
-
-async function callLLM(provider, apiKey, systemPrompt, messages) {
-  if (!provider || !apiKey) throw new Error("no_provider");
-  if (provider.id === "anthropic") {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01"},
-      body:JSON.stringify({model:provider.apiModel,max_tokens:1000,system:systemPrompt,messages:messages.map(m=>({role:m.role,content:m.content}))}),
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    return d.content?.[0]?.text;
-  }
-  if (provider.id === "openai") {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
-      body:JSON.stringify({model:provider.apiModel,messages:[{role:"system",content:systemPrompt},...messages]}),
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    return d.choices?.[0]?.message?.content;
-  }
-  throw new Error("Provider not supported in demo. Add your own fetch logic.");
+// Calls your Vercel serverless function — API key never touches the browser
+async function callBackend(messages, child, teacher) {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, child, teacher }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data.reply;
 }
 
 function renderMd(text) {
@@ -359,38 +333,7 @@ function SageModal({ teacher, onSave, onClose }) {
   );
 }
 
-function ProviderModal({ current, onSave, onClose }) {
-  const [selId,setSelId] = useState(current?.provider?.id||"anthropic");
-  const [key,setKey] = useState(current?.apiKey||"");
-  const prov = PROVIDERS.find(p=>p.id===selId);
-  return (
-    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-title">Connect your LLM ⚡</div>
-        <div className="modal-sub">Paste your API key. It goes straight to the provider — never via our servers. You pay only for what you use.</div>
-        <div className="field">
-          <label className="flabel">Provider</label>
-          <div className="provider-grid">
-            {PROVIDERS.map(p=>(
-              <button key={p.id} className={`prov-card ${selId===p.id?"on":""}`} onClick={()=>setSelId(p.id)}>
-                <div className="prov-name">{p.name}</div><div className="prov-model">{p.model}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field" style={{marginTop:14}}>
-          <label className="flabel">API key</label>
-          <div className="api-input-wrap"><input className="api-input" type="password" placeholder={prov.placeholder} value={key} onChange={e=>setKey(e.target.value)}/></div>
-          <div className="api-hint">🔒 Stored in session only. Never sent to Quokka servers.</div>
-        </div>
-        <div className="modal-actions">
-          <button className="btn-cancel" onClick={onClose}>Cancel</button>
-          <button className="btn-save" disabled={!key} onClick={()=>onSave({provider:prov,apiKey:key})}>Connect {prov.name}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Provider is now handled server-side — no modal needed
 
 // ── ONBOARDING: one-at-a-time steps ──────────────────────────────────────────
 function StepDots({ current, total }) {
@@ -523,7 +466,7 @@ function OnboardFlow({ onComplete }) {
 }
 
 // ── CHAT VIEW ─────────────────────────────────────────────────────────────────
-function ChatView({ child, teacher, messages, loading, onSend, onBack, onConnectLLM, hasLLM }) {
+function ChatView({ child, teacher, messages, loading, onSend, onBack }) {
   const [input,setInput] = useState("");
   const endRef = useRef(null);
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[messages,loading]);
@@ -560,7 +503,6 @@ function ChatView({ child, teacher, messages, loading, onSend, onBack, onConnect
       </div>
       <div className="chat-foot">
         <div className="chat-foot-inner">
-          {!hasLLM && <div className="no-llm-bar">⚡ No LLM connected yet.<button onClick={onConnectLLM}>Connect one →</button></div>}
           {messages.length===0 && (
             <div className="chips">
               {["Why is the sky blue?","Help me understand fractions","Tell me about dinosaurs","Help me plan a story"].map(s=>(
@@ -572,7 +514,7 @@ function ChatView({ child, teacher, messages, loading, onSend, onBack, onConnect
             <textarea className="chat-ta" rows={1} placeholder={`Ask ${teacher.name} anything…`}
               onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(e.target.value);e.target.value=""}}}
             />
-            <button className="send" disabled={loading||!hasLLM}
+            <button className="send" disabled={loading}
               onClick={e=>{const ta=e.target.closest(".chat-foot").querySelector(".chat-ta");send(ta.value);ta.value=""}}>↑</button>
           </div>
         </div>
@@ -587,10 +529,9 @@ export default function App() {
   const [parent,setParent]       = useState(null);
   const [children,setChildren]   = useState([]);
   const [teacher,setTeacher]     = useState(DEFAULT_TEACHER);
-  const [llm,setLlm]             = useState(null);
   const [activeChild,setActive]  = useState(null);
   const [logs,setLogs]           = useState({});
-  const [modal,setModal]         = useState(null);
+  const [modal,setModal]         = useState(null); // null | "sage"
   const [loading,setLoading]     = useState(false);
   const [nudge,setNudge]         = useState(false);
   const [nudgeSeen,setNudgeSeen] = useState(false);
@@ -609,11 +550,10 @@ export default function App() {
     setLogs(p=>({...p,[key]:updated}));
     setLoading(true);
     try {
-      if(!llm) throw new Error("no_provider");
-      const reply=await callLLM(llm.provider,llm.apiKey,buildPrompt(teacher,activeChild),updated);
+      const reply = await callBackend(updated, activeChild, teacher);
       setLogs(p=>({...p,[key]:[...(p[key]||[]),{role:"assistant",content:reply}]}));
     } catch(e) {
-      setLogs(p=>({...p,[key]:[...(p[key]||[]),{role:"assistant",content:e.message==="no_provider"?"No LLM connected — ask a parent to connect one in the dashboard.":`Error: ${e.message}`}]}));
+      setLogs(p=>({...p,[key]:[...(p[key]||[]),{role:"assistant",content:`Hmm, something went wrong — ${e.message}. Try again!`}]}));
     }
     setLoading(false);
   };
@@ -659,20 +599,13 @@ export default function App() {
       <div className="topbar">
         <div className="tlogo">quokka</div>
         <div className="tright">
-          <button className="tbtn accent" onClick={()=>setModal("provider")}>{llm?`🔌 ${llm.provider.name}`:"⚡ Connect LLM"}</button>
           <div className="tav">{parent.name[0]}</div>
           <span className="tname">{parent.name}</span>
-          <button className="tbtn" onClick={()=>{setView("landing");setParent(null);setChildren([]);setLogs({});setTeacher(DEFAULT_TEACHER);setLlm(null)}}>Sign out</button>
+          <button className="tbtn" onClick={()=>{setView("landing");setParent(null);setChildren([]);setLogs({});setTeacher(DEFAULT_TEACHER)}}>Sign out</button>
         </div>
       </div>
       <div className="dash">
-        {!llm&&(
-          <div className="notify" style={{borderColor:"var(--orange)"}}>
-            <span className="notify-text">⚡ Connect your LLM so your children can start chatting with Quokka.</span>
-            <button className="notify-cta" style={{background:"var(--orange)"}} onClick={()=>setModal("provider")}>Connect now</button>
-          </div>
-        )}
-        {nudge&&llm&&(
+        {nudge&&(
           <div className="notify">
             <span className="notify-text">💡 Quokka's doing great! Want to customise how they teach?</span>
             <button className="notify-cta" onClick={()=>{setModal("sage");setNudge(false)}}>Customise</button>
@@ -706,21 +639,18 @@ export default function App() {
           <div style={{flexShrink:0}}><QuokkaSVG size="sm" anim="bounce"/></div>
           <div className="q-panel-info">
             <div className="q-panel-name">{teacher.name}</div>
-            <div className="q-panel-sub">{llm?`Using ${llm.provider.name} · ${llm.provider.model}`:"No LLM connected"}</div>
+            <div className="sage-panel-sub">Active for all children · Powered by Groq</div>
             <div className="traits">
               {teacher.styles.map(s=><span key={s} className="tr tr-s">{s}</span>)}
               {teacher.rules.slice(0,2).map(r=><span key={r} className="tr tr-r">{r}</span>)}
-              {llm&&<span className="tr tr-m">🔌 {llm.provider.name}</span>}
             </div>
             <div className="edit-row">
               <button className="edit-btn" onClick={()=>setModal("sage")}>✏️ Customise</button>
-              <button className="edit-btn" onClick={()=>setModal("provider")}>{llm?"🔄 Switch LLM":"⚡ Connect LLM"}</button>
             </div>
           </div>
         </div>
       </div>
       {modal==="sage"&&<SageModal teacher={teacher} onClose={()=>setModal(null)} onSave={t=>{setTeacher(t);setModal(null)}}/>}
-      {modal==="provider"&&<ProviderModal current={llm} onClose={()=>setModal(null)} onSave={p=>{setLlm(p);setModal(null)}}/>}
     </div>
   );
 
@@ -729,10 +659,9 @@ export default function App() {
     <ChatView
       child={activeChild} teacher={teacher}
       messages={logs[activeChild.name]||[]}
-      loading={loading} hasLLM={!!llm}
+      loading={loading}
       onSend={handleSend}
       onBack={()=>setView("dashboard")}
-      onConnectLLM={()=>{setView("dashboard");setModal("provider")}}
     />
   );
 
