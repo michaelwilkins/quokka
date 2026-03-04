@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     const { messages, child, teacher, systemPrompt: customPrompt } = req.body;
 
     // Validate required fields
-    if (!messages || !child?.name || !child?.age || !child?.level) {
+    if (!messages || !child?.name || !child?.age) {
       return res.status(400).json({ error: "Missing required fields: messages, child" });
     }
 
