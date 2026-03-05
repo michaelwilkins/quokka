@@ -23,9 +23,9 @@ html,body{height:100%;font-family:'Lora',Georgia,serif;background:var(--chalk);c
 
 /* ── QUOKKA ── */
 .quokka-wrap{display:flex;justify-content:center;margin-bottom:8px}
-.quokka-sm{width:72px;height:72px;mix-blend-mode:multiply}
-.quokka-md{width:110px;height:110px;mix-blend-mode:multiply}
-.quokka-lg{width:150px;height:150px;mix-blend-mode:multiply}
+.quokka-sm{width:72px;height:72px;}
+.quokka-md{width:110px;height:110px;}
+.quokka-lg{width:150px;height:150px;}
 .quokka-bounce{animation:qbounce 2.8s ease-in-out infinite}
 .quokka-nod{animation:qnod 2s ease-in-out infinite}
 .quokka-wait{animation:qwait 4s ease-in-out infinite}
@@ -137,7 +137,7 @@ html,body{height:100%;font-family:'Lora',Georgia,serif;background:var(--chalk);c
 .btn-save:hover{background:var(--ink2)}
 
 /* ── SPEECH BUBBLE ── */
-.speech{background:white;border:1.5px solid var(--border);border-radius:4px 16px 16px 16px;padding:18px 22px;max-width:420px;margin-bottom:28px;text-align:left;position:relative}
+.speech{background:white;border:2px solid var(--ink);border-radius:38% 62% 54% 46% / 42% 38% 62% 58%;padding:20px 26px;max-width:420px;margin-bottom:28px;text-align:left;position:relative;box-shadow:3px 4px 0 var(--ink);transform:rotate(-0.4deg)}
 .speech p{font-family:'Lora',serif;font-size:16px;line-height:1.75;color:var(--ink)}
 .speech p + p{margin-top:10px}
 .speech em{font-style:italic}
@@ -201,10 +201,10 @@ html,body{height:100%;font-family:'Lora',Georgia,serif;background:var(--chalk);c
 document.head.appendChild(css);
 
 // ── QUOKKA SVG ────────────────────────────────────────────────────────────────
-const QuokkaSVG = ({ size = "md", anim = "bounce" }) => (
+const QuokkaSVG = ({ size = "md", anim = "bounce", dark = false }) => (
   <div className="quokka-wrap">
     <img
-      src="/quokka.png"
+      src="/quokka.svg"
       alt="Quokka"
       className={`quokka-${size} quokka-${anim}`}
       style={{ objectFit: "contain", objectPosition: "center bottom" }}
@@ -624,9 +624,31 @@ function ChatView({ child, teacher, journey, messages, loading, onSend, onBack }
         <div className="chat-inner">
           {messages.length === 0 ? (
             <div className="chat-welcome">
-              <QuokkaSVG size="lg" anim="wait" />
-              <div className="chat-welcome-sub" style={{ marginTop: 12 }}>
-                {journey?.id === "free" ? "Ask me anything. I warn you, I have opinions." : "Tap to begin. Choose carefully."}
+              {/* ── Journey spark card — shown before first message ── */}
+              {journey?.id !== "free" && journey?.spark ? (
+                <div style={{
+                  background: "white", border: `2px solid ${jAccent}33`,
+                  borderLeft: `4px solid ${jAccent}`,
+                  borderRadius: 8, padding: "20px 24px",
+                  maxWidth: 520, width: "100%", marginBottom: 24, textAlign: "left",
+                }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+                    color: jAccent, fontFamily: "'Inter',sans-serif",
+                    textTransform: "uppercase", marginBottom: 10,
+                  }}>{journey.icon} {journey.sparkTitle}</div>
+                  <p style={{
+                    fontFamily: "'Lora',serif", fontSize: 17, lineHeight: 1.75,
+                    color: "var(--ink)", margin: 0,
+                  }}>{journey.spark}</p>
+                </div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <QuokkaSVG size="md" anim="wait" />
+                </div>
+              )}
+              <div className="chat-welcome-sub">
+                {journey?.id === "free" ? "Ask me anything. I warn you, I have opinions." : "Tap a response below to begin."}
               </div>
               <div className="starter-grid">
                 {starters.map(s => (
@@ -704,15 +726,15 @@ export default function App() {
 
   // ── LANDING ──
   if (view === "landing") return (
-    <div className="flow-page" style={{ background: "var(--ink)", minHeight: "100vh" }}>
+    <div className="flow-page" style={{ background: "var(--ink)", minHeight: "100vh", padding: "40px 32px" }}>
       <div style={{ marginBottom: 8 }}>
         <span style={{ fontFamily: "'Lora',serif", fontWeight: 700, fontSize: 28, color: "var(--chalk)", letterSpacing: "-0.01em" }}>
           qu<span style={{ color: "var(--gold)" }}>o</span>kka
         </span>
       </div>
       <div style={{ marginBottom: 28 }} />
-      <QuokkaSVG size="lg" anim="wait" />
-      <h1 style={{ fontFamily: "'Lora',serif", fontWeight: 700, fontSize: "clamp(28px,6vw,46px)", letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 16, marginTop: 12, color: "var(--chalk)", maxWidth: 480, textAlign: "center" }}>
+      <QuokkaSVG size="lg" anim="wait" dark={true} />
+      <h1 style={{ fontFamily: "'Lora',serif", fontWeight: 700, fontSize: "clamp(26px,5.5vw,46px)", letterSpacing: "-0.02em", lineHeight: 1.15, marginBottom: 16, marginTop: 12, color: "var(--chalk)", maxWidth: 480, width: "100%", textAlign: "center", wordBreak: "break-word" }}>
         Quokka has something<br />to tell your child.
       </h1>
       <p style={{ fontFamily: "'Lora',serif", fontStyle: "italic", fontSize: 18, color: "var(--gold)", marginBottom: 40, fontWeight: 400 }}>
